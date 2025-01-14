@@ -2,7 +2,11 @@ import socket
 import threading
 import json
 import time
-from game.cards import Deck
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from shared.cards import Deck
+from shared.evaluator import HandEvaluator
 
 class PokerServer:
     def __init__(self, host='0.0.0.0', port=12345, max_players=6):
@@ -51,15 +55,28 @@ class PokerServer:
 
     def send_player_state(self, client, player_id):
         """Envía el estado del juego al jugador."""
+        players_serializable = [
+            {
+                "id": player["id"],
+                "stack": player["stack"],
+                "hand": [card.to_dict() for card in player["hand"]],
+                "all_in": player["all_in"]
+            }
+        for player in self.players.values()
+        ]
+
+        community_cards_serializable = [card.to_dict() for card in self.community_cards]
+
         client.sendall(json.dumps({
             "type": "state",
             "player_id": player_id,
-            "players": list(self.players.values()),
-            "community_cards": self.community_cards,
+            "players": players_serializable,
+            "community_cards": community_cards_serializable,
             "pot": self.pot,
             "phase": self.phase,
             "current_turn": self.current_turn,
         }).encode())
+   
 
     def process_message(self, message, player_id):
         """Procesa los mensajes de los clientes."""
@@ -120,16 +137,16 @@ class PokerServer:
     def restart_game(self):
         """Reinicia el juego para la siguiente ronda."""
         self.deck = Deck()
-        self.community_cards = []
+        self.community_cards = self.deck.deal(3)  # Flop inicial
         self.pot = 0
         self.phase = "pre-flop"
         for player in self.players.values():
-            player["hand"] = self.deck.deal(2)
+            player["hand"] = self.deck.deal(2)  # Repartir cartas privadas
 
         self.broadcast({
             "type": "restart",
             "players": list(self.players.values()),
-            "community_cards": self.community_cards
+            "community_cards": [card.to_dict() for card in self.community_cards],
         })
 
     def start(self):

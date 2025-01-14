@@ -1,6 +1,9 @@
 import pygame
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from client.poker_game import PokerGame
-from client.cards import Deck
+from shared.cards import Deck
 
 WIDTH, HEIGHT = 1280, 720
 
@@ -32,3 +35,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
